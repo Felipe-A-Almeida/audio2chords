@@ -1,13 +1,14 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAnalysis }  from '@/composables/useAnalysis'
-import { usePlayback }  from '@/composables/usePlayback'
-import MetadataCard     from '@/components/ui/MetadataCard.vue'
-import AudioPlayer      from '@/components/ui/AudioPlayer.vue'
-import WaveformChart    from '@/components/charts/WaveformChart.vue'
-import SpectrogramChart from '@/components/charts/SpectrogramChart.vue'
-import ChordTimeline    from '@/components/charts/ChordTimeline.vue'
+import { useAnalysis }   from '@/composables/useAnalysis'
+import { usePlayback }   from '@/composables/usePlayback'
+import MetadataCard      from '@/components/ui/MetadataCard.vue'
+import AudioPlayer       from '@/components/ui/AudioPlayer.vue'
+import WaveformChart     from '@/components/charts/WaveformChart.vue'
+import SpectrogramChart  from '@/components/charts/SpectrogramChart.vue'
+import ChordTimeline     from '@/components/charts/ChordTimeline.vue'
+import ChordViewer       from '@/components/charts/ChordViewer.vue'
 
 const router    = useRouter()
 const rawResult = ref(null)
@@ -24,8 +25,6 @@ const {
 } = useAnalysis(rawResult)
 
 const playback = usePlayback()
-
-// Load chord timeline into playback once result is ready
 watch(chords, (list) => { if (list.length) playback.setChords(list) }, { immediate: true })
 
 function analyzeAnother() {
@@ -33,10 +32,9 @@ function analyzeAnother() {
   router.push({ name: 'upload' })
 }
 
-function formatMmSs(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+function formatMmSs(s) {
+  const m = Math.floor(s / 60)
+  return `${String(m).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`
 }
 </script>
 
@@ -52,11 +50,13 @@ function formatMmSs(seconds) {
       </div>
       <div class="flex gap-3 flex-wrap">
         <RouterLink to="/history"
-          class="btn-primary bg-chord-surface border border-chord-border text-chord-text hover:bg-chord-border text-sm">
+          class="btn-primary bg-chord-surface border border-chord-border
+                 text-chord-text hover:bg-chord-border text-sm">
           History
         </RouterLink>
         <button @click="exportJson"
-          class="btn-primary bg-chord-surface border border-chord-border text-chord-text hover:bg-chord-border text-sm">
+          class="btn-primary bg-chord-surface border border-chord-border
+                 text-chord-text hover:bg-chord-border text-sm">
           Export JSON
         </button>
         <button @click="analyzeAnother" class="btn-primary text-sm">
@@ -65,14 +65,17 @@ function formatMmSs(seconds) {
       </div>
     </div>
 
-    <!-- Audio player — only shown when we have an audio URL -->
-    <AudioPlayer
-      v-if="audioUrl"
-      :playback="playback"
-      :audioUrl="audioUrl"
+    <!-- ① Player -->
+    <AudioPlayer v-if="audioUrl" :playback="playback" :audioUrl="audioUrl" />
+
+    <!-- ② Chord diagrams — full width, hero section right below player -->
+    <ChordViewer
+      v-if="chords.length"
+      :chords="chords"
+      :currentTime="playback.currentTime.value"
     />
 
-    <!-- Key metrics -->
+    <!-- ③ Key metrics -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="card text-center">
         <p class="label mb-2">Tempo</p>
@@ -94,7 +97,7 @@ function formatMmSs(seconds) {
       </div>
     </div>
 
-    <!-- Charts -->
+    <!-- ④ Waveform + Spectrogram -->
     <WaveformChart
       v-if="waveform.length"
       :samples="waveform"
@@ -105,7 +108,7 @@ function formatMmSs(seconds) {
       :spectrogram="spectrogram"
     />
 
-    <!-- Bottom row: chord timeline + metadata -->
+    <!-- ⑤ Chord timeline + metadata -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="md:col-span-2">
         <ChordTimeline

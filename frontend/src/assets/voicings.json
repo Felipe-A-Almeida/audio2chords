@@ -1,0 +1,78 @@
+{
+  "_comment": "Guitar: array of 6 strings [E2,A2,D3,G3,B3,E4], value = fret number, -1 = muted, 0 = open. Piano: array of MIDI note numbers (C4=60).",
+
+  "C":   { "piano": [60,64,67],    "guitar": [-1,3,2,0,1,0], "barre": null },
+  "Cm":  { "piano": [60,63,67],    "guitar": [-1,3,5,5,4,3], "barre": 3 },
+  "C7":  { "piano": [60,64,67,70], "guitar": [-1,3,2,3,1,0], "barre": null },
+  "Cm7": { "piano": [60,63,67,70], "guitar": [-1,3,5,3,4,3], "barre": 3 },
+
+  "C#":   { "piano": [61,65,68],    "guitar": [-1,4,3,1,2,1], "barre": 1 },
+  "C#m":  { "piano": [61,64,68],    "guitar": [-1,4,6,6,5,4], "barre": 4 },
+  "C#7":  { "piano": [61,65,68,71], "guitar": [-1,4,3,4,2,1], "barre": null },
+  "C#m7": { "piano": [61,64,68,71], "guitar": [-1,4,6,4,5,4], "barre": 4 },
+
+  "Db":   { "piano": [61,65,68],    "guitar": [-1,4,3,1,2,1], "barre": 1 },
+  "Dbm":  { "piano": [61,64,68],    "guitar": [-1,4,6,6,5,4], "barre": 4 },
+
+  "D":   { "piano": [62,66,69],    "guitar": [-1,-1,0,2,3,2], "barre": null },
+  "Dm":  { "piano": [62,65,69],    "guitar": [-1,-1,0,2,3,1], "barre": null },
+  "D7":  { "piano": [62,66,69,72], "guitar": [-1,-1,0,2,1,2], "barre": null },
+  "Dm7": { "piano": [62,65,69,72], "guitar": [-1,-1,0,2,1,1], "barre": null },
+
+  "Eb":   { "piano": [63,67,70],    "guitar": [-1,6,5,3,4,3], "barre": 3 },
+  "Ebm":  { "piano": [63,66,70],    "guitar": [-1,6,8,8,7,6], "barre": 6 },
+  "Eb7":  { "piano": [63,67,70,73], "guitar": [-1,6,5,6,4,3], "barre": null },
+  "Ebm7": { "piano": [63,66,70,73], "guitar": [-1,6,8,6,7,6], "barre": 6 },
+
+  "D#":   { "piano": [63,67,70],    "guitar": [-1,6,5,3,4,3], "barre": 3 },
+  "D#m":  { "piano": [63,66,70],    "guitar": [-1,6,8,8,7,6], "barre": 6 },
+
+  "E":   { "piano": [64,68,71],    "guitar": [0,2,2,1,0,0],  "barre": null },
+  "Em":  { "piano": [64,67,71],    "guitar": [0,2,2,0,0,0],  "barre": null },
+  "E7":  { "piano": [64,68,71,74], "guitar": [0,2,0,1,0,0],  "barre": null },
+  "Em7": { "piano": [64,67,71,74], "guitar": [0,2,0,0,0,0],  "barre": null },
+
+  "F":   { "piano": [65,69,72],    "guitar": [1,1,2,3,3,1],  "barre": 1 },
+  "Fm":  { "piano": [65,68,72],    "guitar": [1,1,3,3,2,1],  "barre": 1 },
+  "F7":  { "piano": [65,69,72,75], "guitar": [1,1,2,1,3,1],  "barre": 1 },
+  "Fm7": { "piano": [65,68,72,75], "guitar": [1,1,3,1,2,1],  "barre": 1 },
+
+  "F#":   { "piano": [66,70,73],    "guitar": [2,2,3,4,4,2],  "barre": 2 },
+  "F#m":  { "piano": [66,69,73],    "guitar": [2,2,4,4,3,2],  "barre": 2 },
+  "F#7":  { "piano": [66,70,73,76], "guitar": [2,2,3,2,4,2],  "barre": 2 },
+  "F#m7": { "piano": [66,69,73,76], "guitar": [2,2,4,2,3,2],  "barre": 2 },
+
+  "Gb":   { "piano": [66,70,73],    "guitar": [2,2,3,4,4,2],  "barre": 2 },
+  "Gbm":  { "piano": [66,69,73],    "guitar": [2,2,4,4,3,2],  "barre": 2 },
+
+  "G":   { "piano": [67,71,74],    "guitar": [3,2,0,0,0,3],  "barre": null },
+  "Gm":  { "piano": [67,70,74],    "guitar": [3,1,0,0,3,3],  "barre": 3 },
+  "G7":  { "piano": [67,71,74,77], "guitar": [3,2,0,0,0,1],  "barre": null },
+  "Gm7": { "piano": [67,70,74,77], "guitar": [3,1,3,0,3,3],  "barre": null },
+
+  "Ab":   { "piano": [68,72,75],    "guitar": [4,3,1,1,1,4],  "barre": 4 },
+  "Abm":  { "piano": [68,71,75],    "guitar": [4,2,1,1,4,4],  "barre": 4 },
+  "Ab7":  { "piano": [68,72,75,78], "guitar": [4,3,1,2,1,4],  "barre": null },
+  "Abm7": { "piano": [68,71,75,78], "guitar": [4,2,4,1,4,4],  "barre": 4 },
+
+  "G#":   { "piano": [68,72,75],    "guitar": [4,3,1,1,1,4],  "barre": 4 },
+  "G#m":  { "piano": [68,71,75],    "guitar": [4,2,1,1,4,4],  "barre": 4 },
+
+  "A":   { "piano": [69,73,76],    "guitar": [-1,0,2,2,2,0],  "barre": null },
+  "Am":  { "piano": [69,72,76],    "guitar": [-1,0,2,2,1,0],  "barre": null },
+  "A7":  { "piano": [69,73,76,79], "guitar": [-1,0,2,0,2,0],  "barre": null },
+  "Am7": { "piano": [69,72,76,79], "guitar": [-1,0,2,0,1,0],  "barre": null },
+
+  "Bb":   { "piano": [70,74,77],    "guitar": [-1,1,3,3,3,1],  "barre": 1 },
+  "Bbm":  { "piano": [70,73,77],    "guitar": [-1,1,3,3,2,1],  "barre": 1 },
+  "Bb7":  { "piano": [70,74,77,80], "guitar": [-1,1,3,1,3,1],  "barre": 1 },
+  "Bbm7": { "piano": [70,73,77,80], "guitar": [-1,1,3,1,2,1],  "barre": 1 },
+
+  "A#":   { "piano": [70,74,77],    "guitar": [-1,1,3,3,3,1],  "barre": 1 },
+  "A#m":  { "piano": [70,73,77],    "guitar": [-1,1,3,3,2,1],  "barre": 1 },
+
+  "B":   { "piano": [71,75,78],    "guitar": [-1,2,4,4,4,2],  "barre": 2 },
+  "Bm":  { "piano": [71,74,78],    "guitar": [-1,2,4,4,3,2],  "barre": 2 },
+  "B7":  { "piano": [71,75,78,81], "guitar": [-1,2,1,2,0,2],  "barre": null },
+  "Bm7": { "piano": [71,74,78,81], "guitar": [-1,2,4,2,3,2],  "barre": 2 }
+}
