@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAnalysis } from '@/composables/useAnalysis'
-import MetadataCard    from '@/components/ui/MetadataCard.vue'
-import WaveformChart   from '@/components/charts/WaveformChart.vue'
+import { useAnalysis }  from '@/composables/useAnalysis'
+import { usePlayback }  from '@/composables/usePlayback'
+import MetadataCard     from '@/components/ui/MetadataCard.vue'
+import AudioPlayer      from '@/components/ui/AudioPlayer.vue'
+import WaveformChart    from '@/components/charts/WaveformChart.vue'
 import SpectrogramChart from '@/components/charts/SpectrogramChart.vue'
-import ChordTimeline   from '@/components/charts/ChordTimeline.vue'
+import ChordTimeline    from '@/components/charts/ChordTimeline.vue'
 
-const router = useRouter()
+const router    = useRouter()
 const rawResult = ref(null)
 
 onMounted(() => {
@@ -16,17 +18,30 @@ onMounted(() => {
   rawResult.value = JSON.parse(stored)
 })
 
-const { bpmLabel, keyLabel, duration, filename, chords, waveform, spectrogram, exportJson } =
-  useAnalysis(rawResult)
+const {
+  bpmLabel, keyLabel, duration, filename,
+  chords, waveform, spectrogram, audioUrl, exportJson,
+} = useAnalysis(rawResult)
+
+const playback = usePlayback()
+
+// Load chord timeline into playback once result is ready
+watch(chords, (list) => { if (list.length) playback.setChords(list) }, { immediate: true })
 
 function analyzeAnother() {
   sessionStorage.removeItem('audiochord_result')
   router.push({ name: 'upload' })
 }
+
+function formatMmSs(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 </script>
 
 <template>
-  <div v-if="rawResult" class="max-w-6xl mx-auto px-6 py-12 space-y-8 animate-fade-up">
+  <div v-if="rawResult" class="max-w-6xl mx-auto px-6 py-12 space-y-6 animate-fade-up">
 
     <!-- Top bar -->
     <div class="flex items-start justify-between gap-4 flex-wrap">
@@ -35,16 +50,27 @@ function analyzeAnother() {
         <h2 class="font-display font-bold text-2xl truncate max-w-lg">{{ filename }}</h2>
         <p class="text-chord-muted text-sm mt-1">{{ rawResult.summary }}</p>
       </div>
-      <div class="flex gap-3">
-        <button @click="exportJson" class="btn-primary bg-chord-surface border border-chord-border
-               text-chord-text hover:bg-chord-border">
+      <div class="flex gap-3 flex-wrap">
+        <RouterLink to="/history"
+          class="btn-primary bg-chord-surface border border-chord-border text-chord-text hover:bg-chord-border text-sm">
+          History
+        </RouterLink>
+        <button @click="exportJson"
+          class="btn-primary bg-chord-surface border border-chord-border text-chord-text hover:bg-chord-border text-sm">
           Export JSON
         </button>
-        <button @click="analyzeAnother" class="btn-primary">
-          Analyze Another
+        <button @click="analyzeAnother" class="btn-primary text-sm">
+          + New analysis
         </button>
       </div>
     </div>
+
+    <!-- Audio player — only shown when we have an audio URL -->
+    <AudioPlayer
+      v-if="audioUrl"
+      :playback="playback"
+      :audioUrl="audioUrl"
+    />
 
     <!-- Key metrics -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -59,7 +85,7 @@ function analyzeAnother() {
       </div>
       <div class="card text-center">
         <p class="label mb-2">Duration</p>
-        <p class="value">{{ rawResult.metadata ? Math.floor(duration / 60) + ':' + String(Math.floor(duration % 60)).padStart(2,'0') : '—' }}</p>
+        <p class="value">{{ formatMmSs(duration) }}</p>
       </div>
       <div class="card text-center">
         <p class="label mb-2">Chords</p>
@@ -68,30 +94,32 @@ function analyzeAnother() {
       </div>
     </div>
 
-    <!-- Charts row -->
-    <div class="space-y-4">
-      <WaveformChart
-        v-if="waveform.length"
-        :samples="waveform"
-        :duration="duration"
-      />
-      <SpectrogramChart
-        v-if="spectrogram && spectrogram.values?.length > 1"
-        :spectrogram="spectrogram"
-      />
-    </div>
+    <!-- Charts -->
+    <WaveformChart
+      v-if="waveform.length"
+      :samples="waveform"
+      :duration="duration"
+    />
+    <SpectrogramChart
+      v-if="spectrogram && spectrogram.values?.length > 1"
+      :spectrogram="spectrogram"
+    />
 
-    <!-- Bottom row -->
+    <!-- Bottom row: chord timeline + metadata -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="md:col-span-2">
-        <ChordTimeline :chords="chords" :duration="duration" />
+        <ChordTimeline
+          :chords="chords"
+          :duration="duration"
+          :currentTime="playback.currentTime.value"
+          :onSeek="playback.seek"
+        />
       </div>
       <MetadataCard :metadata="rawResult.metadata" />
     </div>
 
   </div>
 
-  <!-- Loading / redirect state -->
   <div v-else class="flex items-center justify-center min-h-[60vh]">
     <p class="text-chord-muted font-mono text-sm">Loading results…</p>
   </div>

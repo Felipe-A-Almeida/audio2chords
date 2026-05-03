@@ -1,17 +1,19 @@
 import { computed } from 'vue'
 
-/**
- * Derives display-friendly values from a raw AnalysisResult.
- * Pure computed — no state, no side effects.
- */
 export function useAnalysis(result) {
-  const bpmLabel  = computed(() => result.value?.bpm?.bpm?.toFixed(1) ?? '—')
-  const keyLabel  = computed(() => result.value?.key?.label ?? '—')
-  const duration  = computed(() => result.value?.metadata?.duration_seconds ?? 0)
-  const filename  = computed(() => result.value?.metadata?.filename ?? '')
-  const chords    = computed(() => result.value?.chords ?? [])
-  const waveform  = computed(() => result.value?.waveform?.samples ?? [])
+  const bpmLabel    = computed(() => result.value?.bpm?.bpm?.toFixed(1) ?? '—')
+  const keyLabel    = computed(() => result.value?.key?.label ?? '—')
+  const duration    = computed(() => result.value?.metadata?.duration_seconds ?? 0)
+  const filename    = computed(() => result.value?.metadata?.filename ?? '')
+  const chords      = computed(() => result.value?.chords ?? [])
+  const waveform    = computed(() => result.value?.waveform?.samples ?? [])
   const spectrogram = computed(() => result.value?.spectrogram ?? null)
+  const analysisId  = computed(() => result.value?.analysis_id ?? null)
+
+  // Audio URL — served by GET /api/audio/<id>
+  const audioUrl = computed(() =>
+    analysisId.value ? `/api/audio/${analysisId.value}` : null
+  )
 
   function exportJson() {
     if (!result.value) return
@@ -26,5 +28,10 @@ export function useAnalysis(result) {
     URL.revokeObjectURL(url)
   }
 
-  return { bpmLabel, keyLabel, duration, filename, chords, waveform, spectrogram, exportJson }
+  return {
+    bpmLabel, keyLabel, duration, filename,
+    chords, waveform, spectrogram,
+    analysisId, audioUrl,
+    exportJson,
+  }
 }

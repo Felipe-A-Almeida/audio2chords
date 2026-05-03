@@ -1,12 +1,10 @@
 <template>
   <div class="min-h-screen">
-    <!-- Ambient glow background -->
     <div class="fixed inset-0 pointer-events-none overflow-hidden">
       <div class="absolute -top-40 -left-40 w-96 h-96 bg-violet-900/20 rounded-full blur-3xl"></div>
       <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-900/10 rounded-full blur-3xl"></div>
     </div>
 
-    <!-- Nav -->
     <header class="relative z-10 border-b border-chord-border">
       <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <RouterLink to="/" class="flex items-center gap-3 group">
@@ -18,7 +16,15 @@
           </div>
           <span class="font-display font-bold text-lg tracking-tight">AudioChord</span>
         </RouterLink>
-        <span class="label">Musical Analysis</span>
+
+        <nav class="flex items-center gap-6">
+          <RouterLink to="/history"
+            class="label hover:text-chord-text transition-colors"
+            active-class="text-chord-text">
+            History
+          </RouterLink>
+          <span class="label">v0.2.0</span>
+        </nav>
       </div>
     </header>
 
