@@ -10,7 +10,10 @@ export function useAnalysis(result) {
   const spectrogram = computed(() => result.value?.spectrogram ?? null)
   const analysisId  = computed(() => result.value?.analysis_id ?? null)
 
-  // Audio URL — served by GET /api/audio/<id>
+  // v0.4.1: beat grid data
+  const beatTimes     = computed(() => result.value?.bpm?.beat_times ?? [])
+  const downbeatTimes = computed(() => result.value?.bpm?.downbeat_times ?? [])
+
   const audioUrl = computed(() =>
     analysisId.value ? `/api/audio/${analysisId.value}` : null
   )
@@ -31,6 +34,7 @@ export function useAnalysis(result) {
   return {
     bpmLabel, keyLabel, duration, filename,
     chords, waveform, spectrogram,
+    beatTimes, downbeatTimes,
     analysisId, audioUrl,
     exportJson,
   }

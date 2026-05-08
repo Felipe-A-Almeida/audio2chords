@@ -14,6 +14,10 @@ class FileMetadata(BaseModel):
 class BPMResult(BaseModel):
     bpm: float = Field(..., description="Estimated tempo in BPM")
     confidence: float = Field(..., ge=0.0, le=1.0)
+    # v0.4.1: beat positions in seconds — used for waveform grid overlay
+    beat_times: list[float] = Field(default_factory=list)
+    # Downbeats (beat 1 of each bar) — stronger visual marker
+    downbeat_times: list[float] = Field(default_factory=list)
 
 
 class KeyResult(BaseModel):
@@ -44,7 +48,6 @@ class ChordEvent(BaseModel):
 
 
 class AnalysisResult(BaseModel):
-    # v0.2.0: analysis_id enables audio playback + DB retrieval
     analysis_id: str
     metadata: FileMetadata
     bpm: BPMResult
@@ -60,7 +63,6 @@ class AnalysisResult(BaseModel):
 
 
 class AnalysisSummary(BaseModel):
-    """Lightweight record for the history list."""
     id: str
     filename: str
     format: str
