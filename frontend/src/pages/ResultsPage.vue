@@ -21,6 +21,13 @@ onMounted(() => {
   const stored = sessionStorage.getItem('audiochord_result')
   if (!stored) { router.push({ name: 'upload' }); return }
   rawResult.value = JSON.parse(stored)
+  // Set smart default threshold based on track distribution
+  const vals = rawResult.value.chords.map(c => c.confidence)
+  if (vals.length) {
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length
+    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length)
+    minConfidence.value = Math.round(Math.max(0, mean - 0.5*std) * 20) / 20
+  }
 })
 
 const {
@@ -132,7 +139,7 @@ function analyzeAnother() {
 
     <!-- ④ Filter controls — side by side on desktop, stacked on mobile -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <ConfidenceFilter v-model="minConfidence" />
+      <ConfidenceFilter v-model="minConfidence" :chords="chords" />
       <ChordFilterPanel
         :uniqueChords="uniqueChords"
         :hiddenChords="hiddenChords"
