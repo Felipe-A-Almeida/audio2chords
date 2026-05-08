@@ -119,7 +119,7 @@ function drawOverlay() {
 
     props.downbeatTimes.forEach((t, barIdx) => {
       const x = timeToX(t)
-      if (x < plotLeft || x > plotRight) continue
+      if (x < plotLeft || x > plotRight) return
       ctx.beginPath()
       ctx.moveTo(x, plotTop - 4)
       ctx.lineTo(x, plotBottom)
