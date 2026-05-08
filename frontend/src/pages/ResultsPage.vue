@@ -16,6 +16,7 @@ import ChordViewer          from '@/components/charts/ChordViewer.vue'
 const router    = useRouter()
 const rawResult = ref(null)
 const minConfidence = ref(0)
+const showGrid     = ref(true)
 
 onMounted(() => {
   const stored = sessionStorage.getItem('audiochord_result')
@@ -33,6 +34,7 @@ onMounted(() => {
 const {
   bpmLabel, keyLabel, duration, filename,
   chords, waveform, spectrogram, audioUrl, exportJson,
+  beatTimes, downbeatTimes,
 } = useAnalysis(rawResult)
 
 // ── Chord filters ─────────────────────────────────────────────────────────
@@ -154,6 +156,11 @@ function analyzeAnother() {
       v-if="waveform.length"
       :samples="waveform"
       :duration="duration"
+      :beatTimes="beatTimes"
+      :downbeatTimes="downbeatTimes"
+      :currentTime="playback.currentTime.value"
+      :showGrid="showGrid"
+      @update:showGrid="showGrid = $event"
     />
     <SpectrogramChart
       v-if="spectrogram && spectrogram.values?.length > 1"
