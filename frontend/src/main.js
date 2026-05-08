@@ -5,12 +5,14 @@ import './assets/main.css'
 
 import UploadPage  from './pages/UploadPage.vue'
 import ResultsPage from './pages/ResultsPage.vue'
+import HistoryPage from './pages/HistoryPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/',        component: UploadPage,  name: 'upload'  },
     { path: '/results', component: ResultsPage, name: 'results' },
+    { path: '/history', component: HistoryPage, name: 'history' },
   ]
 })
 

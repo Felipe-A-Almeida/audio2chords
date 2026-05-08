@@ -3,9 +3,8 @@ from typing import Optional
 
 
 class FileMetadata(BaseModel):
-    """Basic info about the uploaded file."""
     filename: str
-    format: str           # "mp3" or "wav"
+    format: str
     duration_seconds: float
     sample_rate: int
     channels: int
@@ -13,65 +12,63 @@ class FileMetadata(BaseModel):
 
 
 class BPMResult(BaseModel):
-    bpm: float = Field(..., description="Estimated tempo in beats per minute")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence 0–1")
+    bpm: float = Field(..., description="Estimated tempo in BPM")
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    # v0.4.1: beat positions in seconds — used for waveform grid overlay
+    beat_times: list[float] = Field(default_factory=list)
+    # Downbeats (beat 1 of each bar) — stronger visual marker
+    downbeat_times: list[float] = Field(default_factory=list)
 
 
 class KeyResult(BaseModel):
-    key: str              # e.g. "A", "C#"
-    mode: str             # "major" or "minor"
-    label: str            # e.g. "A minor"
+    key: str
+    mode: str
+    label: str
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 
 class WaveformData(BaseModel):
-    """Downsampled amplitude data for rendering."""
-    samples: list[float]  # normalised amplitude values in [-1, 1]
+    samples: list[float]
     duration_seconds: float
 
 
 class SpectrogramData(BaseModel):
-    """
-    Mel spectrogram as a 2-D list (time × frequency).
-    Values are dB-scaled. Frontend renders as a heatmap.
-    """
-    values: list[list[float]]   # shape: [time_frames][mel_bins]
-    time_axis: list[float]      # seconds for each time frame
-    frequency_axis: list[float] # Hz for each mel bin (centre freqs)
+    values: list[list[float]]
+    time_axis: list[float]
+    frequency_axis: list[float]
     db_min: float
     db_max: float
 
 
 class ChordEvent(BaseModel):
-    """A single chord detected in the timeline."""
     start_seconds: float
     end_seconds: float
-    chord: str            # e.g. "Am", "F", "C", "G7"
+    chord: str
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 
 class AnalysisResult(BaseModel):
-    """
-    Top-level response returned by POST /api/analysis/upload.
-    This is also the shape exported as JSON.
-    """
+    analysis_id: str
     metadata: FileMetadata
     bpm: BPMResult
     key: KeyResult
     waveform: WaveformData
     spectrogram: SpectrogramData
     chords: list[ChordEvent]
-
-    # Convenience: full label for display (e.g. "120 BPM · A minor")
     summary: Optional[str] = None
 
     def model_post_init(self, __context) -> None:
         if self.summary is None:
-            self.summary = (
-                f"{self.bpm.bpm:.1f} BPM · {self.key.label}"
-            )
+            self.summary = f"{self.bpm.bpm:.1f} BPM · {self.key.label}"
+
+
+class AnalysisSummary(BaseModel):
+    id: str
+    filename: str
+    format: str
+    created_at: str
 
 
 class ErrorResponse(BaseModel):
     detail: str
-    code: str             # machine-readable error code for the frontend
+    code: str
