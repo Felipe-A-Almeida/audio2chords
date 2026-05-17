@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import median_filter
 import librosa
 from backend.schemas.analysis import ChordEvent
-from backend.audio.stems import separate_harmonic
+from backend.audio.stems import StemResult
 from backend.config import settings
 
 
@@ -30,27 +30,27 @@ _DISPLAY = {
     'Ab':'Ab','Abm':'G#m','Ab7':'Ab7','Abm7':'G#m7',
     'Bb':'Bb','Bbm':'Bbm','Bb7':'Bb7','Bbm7':'Bbm7',
 }
-
 def _display_name(chord): return _DISPLAY.get(chord, chord)
 
 
-def detect_chords(y: np.ndarray, sr: int, audio_path=None) -> list[ChordEvent]:
+def detect_chords(y: np.ndarray, sr: int, stems: StemResult | None = None) -> list[ChordEvent]:
     """
     Chord detection via chromagram template matching.
-    Uses stem separation for cleaner harmonic content.
+    v0.4.2: uses harmonic stem from StemResult when available.
     """
     hop_length = 2048
 
-    # Use separated harmonic stem instead of raw signal
-    y_harm = separate_harmonic(y, sr, audio_path)
+    if stems is not None:
+        y_harm = stems.harmonic
+    else:
+        y_harm = librosa.effects.harmonic(y, margin=4.0)
 
-    chroma = librosa.feature.chroma_cqt(
-        y=y_harm, sr=sr, hop_length=hop_length, bins_per_octave=36,
-    )
+    chroma        = librosa.feature.chroma_cqt(y=y_harm, sr=sr,
+                      hop_length=hop_length, bins_per_octave=36)
     chroma_smooth = median_filter(chroma, size=(1, 9))
-    norms = np.linalg.norm(chroma_smooth, axis=0, keepdims=True)
-    norms = np.where(norms < 1e-6, 1.0, norms)
-    chroma_norm = chroma_smooth / norms
+    norms         = np.linalg.norm(chroma_smooth, axis=0, keepdims=True)
+    norms         = np.where(norms < 1e-6, 1.0, norms)
+    chroma_norm   = chroma_smooth / norms
 
     scores          = _TEMPLATE_MATRIX @ chroma_norm
     best_chord_idx  = np.argmax(scores, axis=0)
@@ -59,8 +59,7 @@ def detect_chords(y: np.ndarray, sr: int, audio_path=None) -> list[ChordEvent]:
     frame_times = librosa.frames_to_time(
         np.arange(len(best_chord_idx)), sr=sr, hop_length=hop_length,
     )
-    duration = len(y) / sr
-
+    duration   = len(y) / sr
     raw_events = _merge_frames(best_chord_idx, best_chord_conf, frame_times, duration)
     min_dur    = max(0.8, settings.CHORD_HOP_SECONDS)
     events     = [e for e in raw_events if (e['end'] - e['start']) >= min_dur] or raw_events
@@ -81,20 +80,16 @@ def detect_chords(y: np.ndarray, sr: int, audio_path=None) -> list[ChordEvent]:
 
 
 def _merge_frames(chord_indices, confidences, times, duration):
-    if not len(chord_indices):
-        return []
-    events, current_chord = [], chord_indices[0]
-    current_start, conf_accum = float(times[0]), [float(confidences[0])]
+    if not len(chord_indices): return []
+    events, current = [], chord_indices[0]
+    start, accum = float(times[0]), [float(confidences[0])]
     for i in range(1, len(chord_indices)):
-        if chord_indices[i] == current_chord:
-            conf_accum.append(float(confidences[i]))
+        if chord_indices[i] == current:
+            accum.append(float(confidences[i]))
         else:
-            events.append({'start': current_start, 'end': float(times[i]),
-                           'chord': _TEMPLATE_NAMES[current_chord],
-                           'conf': float(np.mean(conf_accum))})
-            current_chord, current_start = chord_indices[i], float(times[i])
-            conf_accum = [float(confidences[i])]
-    events.append({'start': current_start, 'end': duration,
-                   'chord': _TEMPLATE_NAMES[current_chord],
-                   'conf': float(np.mean(conf_accum))})
+            events.append({'start':start,'end':float(times[i]),
+                           'chord':_TEMPLATE_NAMES[current],'conf':float(np.mean(accum))})
+            current, start, accum = chord_indices[i], float(times[i]), [float(confidences[i])]
+    events.append({'start':start,'end':duration,
+                   'chord':_TEMPLATE_NAMES[current],'conf':float(np.mean(accum))})
     return events
