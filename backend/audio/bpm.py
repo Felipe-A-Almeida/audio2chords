@@ -1,24 +1,28 @@
 import numpy as np
 import librosa
 from backend.schemas.analysis import BPMResult
+from backend.audio.stems import StemResult
 
 
-def detect_bpm(y: np.ndarray, sr: int) -> BPMResult:
+def detect_bpm(y: np.ndarray, sr: int, stems: StemResult | None = None) -> BPMResult:
     """
     Estimate tempo and extract beat grid positions.
 
-    Returns:
-      - bpm            : global tempo in BPM
-      - confidence     : autocorrelation-based confidence [0, 1]
-      - beat_times     : timestamp (seconds) of every detected beat
-      - downbeat_times : every 4th beat (bar start) — stronger visual marker
+    v0.4.2: accepts StemResult to use the clean percussive stem for beat tracking.
+    When Demucs is available, the drums stem gives a much cleaner onset envelope
+    than the raw mix — especially on music with heavy reverb or dense arrangements.
 
-    The beat_times list is the key addition for the waveform overlay.
-    librosa's beat tracker already computes these — we were just discarding them.
+    Falls back to librosa percussive separation on the raw signal when no stems.
     """
     hop_length = 512
 
-    y_perc    = librosa.effects.percussive(y, margin=3.0)
+    # Use Demucs drums stem if available, otherwise separate percussive from raw
+    if stems is not None and stems.method == "demucs" and stems.percussive is not None:
+        y_perc = stems.percussive
+        log.info("[BPM] Using Demucs drums stem for beat tracking")
+    else:
+        y_perc = librosa.effects.percussive(y, margin=3.0)
+
     onset_env = librosa.onset.onset_strength(y=y_perc, sr=sr, aggregate=np.median)
 
     tempo, beat_frames = librosa.beat.beat_track(
@@ -31,7 +35,7 @@ def detect_bpm(y: np.ndarray, sr: int) -> BPMResult:
 
     bpm = float(np.atleast_1d(tempo)[0])
 
-    # ── Confidence ────────────────────────────────────────────────────────
+    # Confidence via autocorrelation peak at beat period
     ac = librosa.autocorrelate(onset_env, max_size=onset_env.size // 2)
     ac = librosa.util.normalize(ac, norm=np.inf)
     frames_per_sec     = sr / hop_length
@@ -41,13 +45,9 @@ def detect_bpm(y: np.ndarray, sr: int) -> BPMResult:
     peak = float(np.max(ac[lo:hi])) if lo < hi else 0.5
     confidence = float(np.clip((peak - 0.2) / 0.6, 0.0, 1.0))
 
-    # ── Beat times ────────────────────────────────────────────────────────
+    # Beat times and downbeats
     beat_times_arr = librosa.frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
     beat_times     = [round(float(t), 4) for t in beat_times_arr]
-
-    # ── Downbeats — every 4th beat starting from beat 0 ──────────────────
-    # This is a heuristic: true downbeat detection needs a dedicated model.
-    # For a visual overlay, every 4th beat is close enough for 4/4 time.
     downbeat_times = [beat_times[i] for i in range(0, len(beat_times), 4)]
 
     print(f"[BPM] detected={bpm:.1f}  beats={len(beat_times)}  "
@@ -59,3 +59,7 @@ def detect_bpm(y: np.ndarray, sr: int) -> BPMResult:
         beat_times=beat_times,
         downbeat_times=downbeat_times,
     )
+
+
+import logging
+log = logging.getLogger(__name__)

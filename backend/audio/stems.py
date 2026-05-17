@@ -1,116 +1,85 @@
-"""
-Stem separation — isolates harmonic/vocal content before DSP analysis.
-
-Two strategies, selected automatically:
-
-  1. Demucs (optional, high quality)
-     Requires: pip install demucs
-     Uses a pretrained neural network (htdemucs) to separate:
-     vocals, bass, drums, other → we use vocals+other for chord/key analysis
-     Produces significantly better results on polyphonic music.
-
-  2. Librosa HPSS (always available, fast)
-     Median-filter harmonic-percussive source separation.
-     Good enough for most pop/rock, degrades on dense orchestral material.
-
-The function returns a mono numpy array ready for further DSP.
-Detection of demucs is done at call time — if it's installed it's used,
-otherwise we fall back to HPSS with a log message.
-"""
-
-import numpy as np
-import tempfile
-import logging
+import numpy as np, logging
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+class StemMode(str, Enum):
+    HARMONIC     = "harmonic"
+    INSTRUMENTAL = "instrumental"
+    FULL         = "full"
 
-def separate_harmonic(y: np.ndarray, sr: int, audio_path: Path | None = None) -> np.ndarray:
-    """
-    Return the harmonic/melodic component of the audio signal.
+@dataclass
+class StemResult:
+    harmonic:   np.ndarray
+    percussive: np.ndarray
+    method:     str = "hpss"
+    model:      str = "librosa"
+    quality:    str = "standard"
+    mode:       str = "harmonic"
+    vocals:     np.ndarray | None = None
+    bass:       np.ndarray | None = None
+    drums:      np.ndarray | None = None
+    other:      np.ndarray | None = None
 
-    Args:
-        y          : mono audio array (already loaded by librosa)
-        sr         : sample rate
-        audio_path : original file path (required for Demucs, optional otherwise)
-
-    Returns:
-        y_harmonic : mono numpy array, same sr as input
-    """
-    if _demucs_available():
+def separate(y, sr, audio_path=None, mode=StemMode.HARMONIC):
+    if mode == StemMode.FULL:
+        return StemResult(harmonic=y, percussive=y,
+                          method="none", model="none", quality="none", mode="full")
+    if _demucs_available() and audio_path is not None:
         try:
-            return _separate_demucs(audio_path, sr)
+            return _separate_demucs(audio_path, sr, mode)
         except Exception as e:
             log.warning(f"[STEMS] Demucs failed ({e}), falling back to HPSS")
+    if mode == StemMode.INSTRUMENTAL:
+        log.warning("[STEMS] INSTRUMENTAL requested but Demucs not installed. Using HPSS.")
+    return _separate_hpss(y, mode)
 
-    return _separate_hpss(y)
+def save_harmonic_stem(result, sr, dest):
+    import soundfile as sf
+    sf.write(str(dest), result.harmonic, sr, subtype="PCM_16")
+    return dest
 
+def stem_info(mode=StemMode.HARMONIC):
+    demucs = _demucs_available()
+    return {
+        "method": "demucs" if demucs else "hpss",
+        "model":  "htdemucs" if demucs else "librosa",
+        "quality": "high" if demucs else "standard",
+        "mode": mode.value if (demucs or mode != StemMode.INSTRUMENTAL) else "harmonic",
+        "demucs_available": demucs,
+        "vocal_removal": mode == StemMode.INSTRUMENTAL and demucs,
+    }
 
-def _demucs_available() -> bool:
+def _demucs_available():
     try:
-        import demucs  # noqa: F401
-        return True
+        import demucs; return True
     except ImportError:
         return False
 
-
-def _separate_hpss(y: np.ndarray) -> np.ndarray:
-    """
-    Librosa harmonic-percussive source separation.
-    margin=6.0 is more aggressive than the default (margin=1) —
-    it removes more percussive content at the cost of some harmonic bleed.
-    """
+def _separate_hpss(y, mode):
     import librosa
-    log.info("[STEMS] Using librosa HPSS (Demucs not installed)")
-    y_harm, _ = librosa.effects.hpss(y, margin=6.0)
-    return y_harm
+    y_harm, y_perc = librosa.effects.hpss(y, margin=6.0)
+    return StemResult(harmonic=y_harm, percussive=y_perc,
+                      method="hpss", model="librosa", quality="standard", mode="harmonic")
 
-
-def _separate_demucs(audio_path: Path, sr: int) -> np.ndarray:
-    """
-    Use Demucs htdemucs model to separate stems.
-    We sum vocals + other → harmonic signal for chord/key analysis.
-    Drums and bass are intentionally excluded to reduce chroma noise.
-
-    Demucs outputs at 44100 Hz — we resample to match the project SR.
-    """
-    import torch
-    import librosa
+def _separate_demucs(audio_path, sr, mode):
+    import torch, librosa
     from demucs.pretrained import get_model
     from demucs.apply import apply_model
-
-    log.info("[STEMS] Using Demucs htdemucs for stem separation")
-
-    model = get_model("htdemucs")
-    model.eval()
-
-    # Load at native rate for Demucs
+    model = get_model("htdemucs"); model.eval()
     y_native, sr_native = librosa.load(str(audio_path), sr=None, mono=False)
-    if y_native.ndim == 1:
-        y_native = np.stack([y_native, y_native])  # stereo expected
-
-    wav = torch.tensor(y_native, dtype=torch.float32).unsqueeze(0)  # (1, 2, T)
-
+    if y_native.ndim == 1: y_native = np.stack([y_native, y_native])
+    wav = torch.tensor(y_native, dtype=torch.float32).unsqueeze(0)
     with torch.no_grad():
         sources = apply_model(model, wav, device="cpu", progress=False)
-    # sources shape: (1, 4, 2, T) — stems: drums, bass, other, vocals
-    # Demucs stem order for htdemucs: drums=0, bass=1, other=2, vocals=3
-    other  = sources[0, 2].mean(0).numpy()   # mono other
-    vocals = sources[0, 3].mean(0).numpy()   # mono vocals
-
-    harmonic = (other + vocals) / 2.0
-
-    # Resample to project sample rate
-    if sr_native != sr:
-        harmonic = librosa.resample(harmonic, orig_sr=sr_native, target_sr=sr)
-
-    log.info(f"[STEMS] Demucs separation complete, shape={harmonic.shape}")
-    return harmonic
-
-
-def stem_info() -> dict:
-    """Return info about which separation method will be used."""
-    if _demucs_available():
-        return {"method": "demucs", "model": "htdemucs", "quality": "high"}
-    return {"method": "hpss", "model": "librosa", "quality": "standard"}
+    def to_mono(t):
+        a = t.mean(0).numpy()
+        return librosa.resample(a, orig_sr=sr_native, target_sr=sr) if sr_native != sr else a
+    drums=to_mono(sources[0,0]); bass=to_mono(sources[0,1])
+    other=to_mono(sources[0,2]); vocals=to_mono(sources[0,3])
+    harmonic = (other+bass*0.5)/1.5 if mode==StemMode.INSTRUMENTAL else (other+vocals)/2.0
+    return StemResult(harmonic=harmonic, percussive=drums, method="demucs",
+                      model="htdemucs", quality="high", mode=mode.value,
+                      vocals=vocals, bass=bass, drums=drums, other=other)
