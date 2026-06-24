@@ -11,51 +11,58 @@ class FileMetadata(BaseModel):
     file_size_bytes: int
 
 
+class StemInfo(BaseModel):
+    """Which stem separation method was used and whether harmonic playback is available."""
+    method:           str   # "hpss" | "demucs"
+    model:            str   # "librosa" | "htdemucs"
+    quality:          str   # "standard" | "high"
+    harmonic_available: bool = False   # True when harmonic stem WAV was saved
+
+
 class BPMResult(BaseModel):
-    bpm: float = Field(..., description="Estimated tempo in BPM")
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    # v0.4.1: beat positions in seconds — used for waveform grid overlay
-    beat_times: list[float] = Field(default_factory=list)
-    # Downbeats (beat 1 of each bar) — stronger visual marker
+    bpm:            float = Field(..., description="Estimated tempo in BPM")
+    confidence:     float = Field(..., ge=0.0, le=1.0)
+    beat_times:     list[float] = Field(default_factory=list)
     downbeat_times: list[float] = Field(default_factory=list)
 
 
 class KeyResult(BaseModel):
-    key: str
-    mode: str
-    label: str
+    key:        str
+    mode:       str
+    label:      str
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 
 class WaveformData(BaseModel):
-    samples: list[float]
+    samples:          list[float]
     duration_seconds: float
 
 
 class SpectrogramData(BaseModel):
-    values: list[list[float]]
-    time_axis: list[float]
+    values:         list[list[float]]
+    time_axis:      list[float]
     frequency_axis: list[float]
-    db_min: float
-    db_max: float
+    db_min:         float
+    db_max:         float
 
 
 class ChordEvent(BaseModel):
     start_seconds: float
-    end_seconds: float
-    chord: str
-    confidence: float = Field(..., ge=0.0, le=1.0)
+    end_seconds:   float
+    chord:         str
+    confidence:    float = Field(..., ge=0.0, le=1.0)
 
 
 class AnalysisResult(BaseModel):
     analysis_id: str
-    metadata: FileMetadata
-    bpm: BPMResult
-    key: KeyResult
-    waveform: WaveformData
+    metadata:    FileMetadata
+    stem_info:   StemInfo         # ← new: tells frontend which method was used
+    bpm:         BPMResult
+    key:         KeyResult
+    waveform:    WaveformData
     spectrogram: SpectrogramData
-    chords: list[ChordEvent]
-    summary: Optional[str] = None
+    chords:      list[ChordEvent]
+    summary:     Optional[str] = None
 
     def model_post_init(self, __context) -> None:
         if self.summary is None:
@@ -63,12 +70,12 @@ class AnalysisResult(BaseModel):
 
 
 class AnalysisSummary(BaseModel):
-    id: str
-    filename: str
-    format: str
+    id:         str
+    filename:   str
+    format:     str
     created_at: str
 
 
 class ErrorResponse(BaseModel):
     detail: str
-    code: str
+    code:   str

@@ -33,7 +33,7 @@ onMounted(() => {
 
 const {
   bpmLabel, keyLabel, duration, filename,
-  chords, waveform, spectrogram, audioUrl, exportJson,
+  chords, waveform, spectrogram, audioUrl, exportJson, exportMidi,
   beatTimes, downbeatTimes,
 } = useAnalysis(rawResult)
 
@@ -95,6 +95,11 @@ function analyzeAnother() {
           class="btn-primary bg-chord-surface border border-chord-border
                  text-chord-text hover:bg-chord-border text-xs sm:text-sm">
           Export JSON
+        </button>
+        <button @click="exportMidi"
+          class="btn-primary bg-chord-surface border border-chord-border
+                 text-chord-accent hover:bg-chord-border text-xs sm:text-sm">
+          Export MIDI
         </button>
         <button @click="analyzeAnother" class="btn-primary text-xs sm:text-sm">
           + New

@@ -1,19 +1,13 @@
 import { ref } from 'vue'
 import axios from 'axios'
 
-/**
- * Manages the upload state machine:
- *   idle → uploading → done | error
- *
- * Returns the raw AnalysisResult from the backend, or null on error.
- */
 export function useAudioUpload() {
-  const state    = ref('idle')   // 'idle' | 'uploading' | 'done' | 'error'
+  const state    = ref('idle')
   const progress = ref(0)
   const error    = ref(null)
   const result   = ref(null)
 
-  async function upload(file) {
+  async function upload(file, stemMode = 'harmonic') {
     state.value    = 'uploading'
     progress.value = 0
     error.value    = null
@@ -21,14 +15,13 @@ export function useAudioUpload() {
 
     const form = new FormData()
     form.append('file', file)
+    form.append('stem_mode', stemMode)
 
     try {
       const response = await axios.post('/api/analysis/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress(evt) {
-          if (evt.total) {
-            progress.value = Math.round((evt.loaded / evt.total) * 100)
-          }
+          if (evt.total) progress.value = Math.round((evt.loaded / evt.total) * 100)
         }
       })
       result.value = response.data
@@ -43,10 +36,8 @@ export function useAudioUpload() {
   }
 
   function reset() {
-    state.value    = 'idle'
-    progress.value = 0
-    error.value    = null
-    result.value   = null
+    state.value = 'idle'; progress.value = 0
+    error.value = null;   result.value   = null
   }
 
   return { state, progress, error, result, upload, reset }
