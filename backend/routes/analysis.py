@@ -1,11 +1,12 @@
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 
 from backend.schemas.analysis import AnalysisResult, AnalysisSummary, ErrorResponse
 from backend.db import load_analysis, list_analyses
 from backend.services.file_service import file_service
 from backend.config import settings
+from backend.audio.midi import build_midi
 
 router = APIRouter(prefix="/api", tags=["utility"])
 
@@ -87,4 +88,27 @@ async def export_analysis(result: AnalysisResult):
     return JSONResponse(
         content=result.model_dump(),
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── MIDI export ───────────────────────────────────────────────────────────
+
+@router.get(
+    "/analysis/{analysis_id}/midi",
+    summary="Download chord progression as MIDI file",
+    responses={404: {"model": ErrorResponse}},
+)
+async def export_midi(analysis_id: str):
+    data = await load_analysis(analysis_id)
+    if not data:
+        raise HTTPException(status_code=404, detail={
+            "detail": "Analysis not found.", "code": "NOT_FOUND"
+        })
+    result = AnalysisResult(**data)
+    midi_bytes = build_midi(result)
+    stem = Path(result.metadata.filename).stem
+    return Response(
+        content=midi_bytes,
+        media_type="audio/midi",
+        headers={"Content-Disposition": f'attachment; filename="audiochord_{stem}.mid"'},
     )

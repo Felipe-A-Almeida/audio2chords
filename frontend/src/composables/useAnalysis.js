@@ -31,11 +31,25 @@ export function useAnalysis(result) {
     URL.revokeObjectURL(url)
   }
 
+  async function exportMidi() {
+    if (!analysisId.value) return
+    const res = await fetch(`/api/analysis/${analysisId.value}/midi`)
+    if (!res.ok) return
+    const blob = await res.blob()
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    const stem = (filename.value || 'audiochord').replace(/\.[^.]+$/, '')
+    a.href     = url
+    a.download = `audiochord_${stem}.mid`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return {
     bpmLabel, keyLabel, duration, filename,
     chords, waveform, spectrogram,
     beatTimes, downbeatTimes,
     analysisId, audioUrl,
-    exportJson,
+    exportJson, exportMidi,
   }
 }
