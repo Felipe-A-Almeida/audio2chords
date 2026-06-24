@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # v0.2.0: keep audio files for playback (they are cleaned up by DB TTL in future)
     KEEP_AUDIO_FILES: bool = True
 
+    # Rate limiting (per IP)
+    RATE_LIMIT_UPLOAD_MINUTE: int = 5
+    RATE_LIMIT_UPLOAD_HOUR: int = 20
+
     @property
     def max_file_size_bytes(self) -> int:
         return self.MAX_FILE_SIZE_MB * 1024 * 1024

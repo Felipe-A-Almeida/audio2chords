@@ -1,17 +1,25 @@
 # backend/routes/upload.py
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from typing import Annotated
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from backend.services.file_service import file_service
 from backend.services.analysis_service import analysis_service
 from backend.schemas.analysis import AnalysisResult, ErrorResponse
 from backend.audio.stems import StemMode
 from backend.db import save_analysis
+from backend.config import settings
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/analysis", tags=["analysis"])
 
 @router.post("/upload", response_model=AnalysisResult,
-    responses={413:{"model":ErrorResponse},422:{"model":ErrorResponse},500:{"model":ErrorResponse}})
+    responses={413:{"model":ErrorResponse},422:{"model":ErrorResponse},429:{"model":ErrorResponse},500:{"model":ErrorResponse}})
+@limiter.limit(f"{settings.RATE_LIMIT_UPLOAD_MINUTE}/minute")
+@limiter.limit(f"{settings.RATE_LIMIT_UPLOAD_HOUR}/hour")
 async def upload_and_analyze(
+    request: Request,
     file: UploadFile = File(...),
     stem_mode: Annotated[StemMode, Form()] = StemMode.HARMONIC,
 ):
