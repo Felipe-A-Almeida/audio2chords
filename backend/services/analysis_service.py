@@ -1,61 +1,73 @@
 from pathlib import Path
-
 from backend.config import settings
-from backend.schemas.analysis import (
-    AnalysisResult,
-    FileMetadata,
-)
-# Audio modules — will be implemented in Step 4 & 5
+from backend.schemas.analysis import AnalysisResult, FileMetadata, StemInfo
 from backend.audio.bpm import detect_bpm
 from backend.audio.key import detect_key
 from backend.audio.waveform import extract_waveform
 from backend.audio.spectrogram import compute_spectrogram
 from backend.audio.chords import detect_chords
+from backend.audio.stems import separate, save_harmonic_stem, StemMode
 
 
 class AnalysisService:
-    """
-    Orchestrates the full audio analysis pipeline.
 
-    Responsibilities:
-      1. Load audio once (shared numpy array across all processors)
-      2. Call each DSP module in order
-      3. Assemble the AnalysisResult schema
-      4. Never do DSP math itself — that lives in audio/
-    """
-
-    async def analyze(self, audio_path: Path, original_filename: str) -> AnalysisResult:
+    async def analyze(
+        self,
+        audio_path: Path,
+        original_filename: str,
+        analysis_id: str,
+        stem_mode: StemMode = StemMode.HARMONIC,   # ← new parameter
+    ) -> AnalysisResult:
         import librosa
         import soundfile as sf
 
-        # --- 1. Load audio ---------------------------------------------------
-        # librosa.load resamples to settings.SAMPLE_RATE automatically.
-        # mono=True collapses stereo; we track original channel count separately.
         y, sr = librosa.load(str(audio_path), sr=settings.SAMPLE_RATE, mono=True)
 
-        # Get original file metadata before any processing
-        info = sf.info(str(audio_path))
+        sf_info   = sf.info(str(audio_path))
         file_stat = audio_path.stat()
 
         metadata = FileMetadata(
             filename=original_filename,
             format=audio_path.suffix.lstrip(".").lower(),
-            duration_seconds=round(float(info.duration), 3),
-            sample_rate=info.samplerate,
-            channels=info.channels,
+            duration_seconds=round(float(sf_info.duration), 3),
+            sample_rate=sf_info.samplerate,
+            channels=sf_info.channels,
             file_size_bytes=file_stat.st_size,
         )
 
-        # --- 2. Run DSP pipeline (all modules receive the same y, sr) --------
-        bpm_result = detect_bpm(y, sr)
-        key_result = detect_key(y, sr)
-        waveform_data = extract_waveform(y, sr)
-        spectrogram_data = compute_spectrogram(y, sr)
-        chord_events = detect_chords(y, sr)
+        # Stem separation — runs once, shared across all DSP modules
+        stems = separate(y, sr, audio_path, mode=stem_mode)
+        print(f"[ANALYSIS] Stem: method={stems.method} mode={stems.mode} quality={stems.quality}")
 
-        # --- 3. Assemble and return ------------------------------------------
+        # Save harmonic stem for playback toggle
+        harmonic_available = False
+        harmonic_path = audio_path.parent / f"{analysis_id}.harmonic.wav"
+        try:
+            save_harmonic_stem(stems, sr, harmonic_path)
+            harmonic_available = True
+        except Exception as e:
+            print(f"[ANALYSIS] Could not save harmonic stem: {e}")
+
+        stem_info = StemInfo(
+            method=stems.method,
+            model=stems.model,
+            quality=stems.quality,
+            mode=stems.mode,
+            demucs_available=stems.method == "demucs",
+            vocal_removal=stems.mode == "instrumental" and stems.method == "demucs",
+            harmonic_available=harmonic_available,
+        )
+
+        bpm_result       = detect_bpm(y, sr, stems=stems)
+        key_result       = detect_key(y, sr, stems=stems)
+        waveform_data    = extract_waveform(y, sr)
+        spectrogram_data = compute_spectrogram(y, sr)
+        chord_events     = detect_chords(y, sr, stems=stems)
+
         return AnalysisResult(
+            analysis_id=analysis_id,
             metadata=metadata,
+            stem_info=stem_info,
             bpm=bpm_result,
             key=key_result,
             waveform=waveform_data,
@@ -64,5 +76,4 @@ class AnalysisService:
         )
 
 
-# Module-level singleton
 analysis_service = AnalysisService()

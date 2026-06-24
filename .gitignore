@@ -1,20 +1,56 @@
+# =============================================================================
 # Python
+# =============================================================================
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 .venv/
 venv/
 *.egg-info/
 dist/
-.env
+build/
+.eggs/
 
-# Uploads (never commit audio files)
+# Environment variables — NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# =============================================================================
+# Audio files — can be large and contain copyrighted material
+# =============================================================================
 backend/uploads/
 
-# Node
+# =============================================================================
+# Database — local state, not part of source code
+# SQLite file grows with every analysis; each dev should have their own
+# =============================================================================
+backend/audiochord.db
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# =============================================================================
+# Node / Frontend
+# =============================================================================
 frontend/node_modules/
 frontend/dist/
+frontend/.vite/
 
-# OS
+# =============================================================================
+# OS & editor artifacts
+# =============================================================================
 .DS_Store
 Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/

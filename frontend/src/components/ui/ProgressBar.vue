@@ -25,9 +25,9 @@ defineProps({
   </div>
 </template>
 
-<style>
-  @keyframes shimmer {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(200%); }
-  }
+<style scoped>
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
 </style>

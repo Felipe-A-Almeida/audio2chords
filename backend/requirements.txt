@@ -12,3 +12,6 @@ soundfile==0.12.1
 
 # Visualization data (backend computes, frontend renders)
 matplotlib==3.8.4
+aiosqlite==0.20.0
+slowapi==0.1.9
+MIDIUtil==1.2.1
